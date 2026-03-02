@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>AssetScan — QR Scanner</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:'DM Sans',system-ui,sans-serif;-webkit-font-smoothing:antialiased;}
+#vid{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;}
+#cnv{display:none;}
+.vig{position:fixed;inset:0;z-index:2;pointer-events:none;background:radial-gradient(ellipse 62% 62% at 50% 48%,transparent 30%,rgba(0,0,0,.75) 100%);}
+.vf-wrap{position:fixed;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+.vf{position:relative;width:min(70vw,280px);aspect-ratio:1/1;}
+.vf::before,.vf::after,.c2,.c3{content:'';position:absolute;width:32px;height:32px;transition:border-color .25s;}
+.vf::before{top:0;left:0;border-top:3px solid #ff6b2b;border-left:3px solid #ff6b2b;border-radius:5px 0 0 0;}
+.vf::after{top:0;right:0;border-top:3px solid #ff6b2b;border-right:3px solid #ff6b2b;border-radius:0 5px 0 0;}
+.c2{bottom:0;left:0;border-bottom:3px solid #ff6b2b;border-left:3px solid #ff6b2b;border-radius:0 0 0 5px;}
+.c3{bottom:0;right:0;border-bottom:3px solid #ff6b2b;border-right:3px solid #ff6b2b;border-radius:0 0 5px 0;}
+.sline{position:absolute;left:6px;right:6px;height:2px;background:linear-gradient(90deg,transparent,#ff6b2b 25%,#ffaa70 50%,#ff6b2b 75%,transparent);box-shadow:0 0 12px rgba(255,107,43,.7),0 0 28px rgba(255,107,43,.3);border-radius:2px;animation:scan 2.2s cubic-bezier(.45,.05,.55,.95) infinite;}
+@keyframes scan{0%{top:6px;opacity:0;}6%{opacity:1;}94%{opacity:1;}100%{top:calc(100% - 8px);opacity:0;}}
+.vf.ok::before,.vf.ok::after,.vf.ok .c2,.vf.ok .c3{border-color:#00e085;}
+.vf.ok .sline{background:linear-gradient(90deg,transparent,#00e085,transparent);box-shadow:0 0 16px rgba(0,224,133,.8);animation:none;top:50%;}
+.top{position:fixed;top:0;left:0;right:0;z-index:20;padding:env(safe-area-inset-top,0px) 18px 0;background:linear-gradient(to bottom,rgba(0,0,0,.9) 0%,transparent 100%);}
+.top-inner{height:58px;display:flex;align-items:center;justify-content:space-between;}
+.top-name{font-size:14px;font-weight:700;color:#fff;letter-spacing:.3px;}
+.top-status{font-size:10px;color:rgba(255,255,255,.45);letter-spacing:.9px;text-transform:uppercase;margin-top:2px;}
+.xbtn{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.xbtn:active{background:rgba(255,255,255,.25);}
+.hint{position:fixed;z-index:20;left:0;right:0;top:calc(50% + min(37vw,148px) + 16px);display:flex;justify-content:center;pointer-events:none;}
+.hpill{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.85);background:rgba(0,0,0,.52);backdrop-filter:blur(10px);padding:9px 22px;border-radius:100px;border:1px solid rgba(255,255,255,.1);transition:color .25s,background .25s;}
+.hpill.ok{color:#00e085;background:rgba(0,40,20,.6);border-color:rgba(0,224,133,.25);}
+.livebadge{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom,0px));left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:center;gap:7px;}
+.ldot{width:7px;height:7px;border-radius:50%;background:#00e085;animation:blink 1s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.1}}
+.ltxt{font-size:10px;font-weight:700;letter-spacing:.8px;color:rgba(255,255,255,.38);}
+.bot{position:fixed;bottom:0;left:0;right:0;z-index:20;padding:16px 20px calc(env(safe-area-inset-bottom,0px) + 16px);background:linear-gradient(to top,rgba(0,0,0,.88) 0%,transparent 100%);}
+.cancelbtn{width:100%;padding:15px;border:1.5px solid rgba(255,255,255,.16);border-radius:15px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.85);font-size:15px;font-weight:700;cursor:pointer;transition:background .15s;}
+.cancelbtn:active{background:rgba(255,255,255,.2);}
+.screen{position:fixed;inset:0;z-index:50;background:#0d0f14;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:32px;text-align:center;transition:opacity .3s;}
+.screen.gone{opacity:0;pointer-events:none;}
+.sico{font-size:56px;animation:pulse 1.3s ease-in-out infinite;}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.stitle{font-size:18px;font-weight:700;color:#fff;}
+.ssub{font-size:13px;color:rgba(255,255,255,.4);line-height:1.7;max-width:270px;}
+.spinner{width:44px;height:44px;border-radius:50%;border:3px solid rgba(255,107,43,.15);border-top-color:#ff6b2b;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.errscreen{position:fixed;inset:0;z-index:50;background:#0d0f14;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:32px;text-align:center;}
+.errbox{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px;text-align:left;width:100%;max-width:300px;font-size:13px;color:rgba(255,255,255,.5);line-height:2.1;}
+.retrybtn{width:100%;max-width:280px;padding:15px;background:#ff6b2b;border:none;border-radius:14px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;}
+.backbtn{width:100%;max-width:280px;padding:13px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;color:rgba(255,255,255,.55);font-size:13px;font-weight:600;cursor:pointer;}
+</style>
+</head>
+<body>
+<video id="vid" playsinline autoplay muted></video>
+<canvas id="cnv"></canvas>
+<div class="vig"></div>
+<div class="vf-wrap"><div class="vf" id="vf"><div class="c2"></div><div class="c3"></div><div class="sline"></div></div></div>
+<div class="hint"><div class="hpill" id="hpill">ALIGN QR CODE IN FRAME</div></div>
+<div class="top"><div class="top-inner"><div><div class="top-name">📦 AssetScan Pro</div><div class="top-status" id="topStatus">STARTING CAMERA…</div></div><button class="xbtn" onclick="closeMe()">✕</button></div></div>
+<div class="livebadge"><div class="ldot"></div><div class="ltxt" id="ltxt">LIVE</div></div>
+<div class="bot"><button class="cancelbtn" onclick="closeMe()">✕  Cancel</button></div>
+<div class="screen" id="loadScreen"><div class="sico">📷</div><div class="stitle">Opening Camera</div><div class="ssub">Allow camera access when your browser asks</div><div class="spinner"></div></div>
+<div class="errscreen" id="errScreen">
+  <div style="font-size:50px">🚫</div>
+  <div style="font-size:17px;font-weight:700;color:#ff4d6a">Camera Blocked</div>
+  <div style="font-size:13px;color:rgba(255,255,255,.45);max-width:280px;line-height:1.65">Camera permission was denied or unavailable.</div>
+  <div class="errbox">1. Tap the 🔒 icon in your address bar<br/>2. Find <strong>Camera</strong> → set to <strong>Allow</strong><br/>3. Reload the page and try again</div>
+  <button class="retrybtn" onclick="start()">🔄  Try Again</button>
+  <button class="backbtn" onclick="closeMe()">← Go Back</button>
+</div>
+<script>
+var vid=document.getElementById('vid'),cnv=document.getElementById('cnv'),ctx=cnv.getContext('2d');
+var stream=null,raf=null,done=false,fCount=0,fTime=Date.now();
+
+function getTarget(){
+  try{if(window.parent&&window.parent!==window)return window.parent;}catch(e){}
+  try{if(window.opener&&!window.opener.closed)return window.opener;}catch(e){}
+  return null;
+}
+function sendMsg(data){var t=getTarget();if(t)try{t.postMessage(data,'*');}catch(e){}}
+
+function start(){
+  document.getElementById('loadScreen').classList.remove('gone');
+  document.getElementById('errScreen').style.display='none';
+  done=false;
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){showErr();return;}
+  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}})
+  .then(function(st){stream=st;vid.srcObject=st;return vid.play();})
+  .then(function(){
+    document.getElementById('loadScreen').classList.add('gone');
+    document.getElementById('topStatus').textContent='LIVE — POINT AT QR CODE';
+    fCount=0;fTime=Date.now();raf=requestAnimationFrame(tick);
+  })
+  .catch(function(e){console.error(e);showErr();});
+}
+
+function tick(){
+  if(done)return;
+  if(vid.readyState>=2&&vid.videoWidth>0){
+    cnv.width=vid.videoWidth;cnv.height=vid.videoHeight;
+    ctx.drawImage(vid,0,0,cnv.width,cnv.height);
+    fCount++;var now=Date.now();
+    if(now-fTime>=1000){document.getElementById('ltxt').textContent='LIVE · '+fCount+' FPS';fCount=0;fTime=now;}
+    var img=ctx.getImageData(0,0,cnv.width,cnv.height);
+    var code=jsQR(img.data,img.width,img.height,{inversionAttempts:'dontInvert'});
+    if(code){onDetected(code.data);return;}
+  }
+  raf=requestAnimationFrame(tick);
+}
+
+function onDetected(val){
+  if(done)return;done=true;
+  if(raf)cancelAnimationFrame(raf);
+  document.getElementById('vf').classList.add('ok');
+  document.getElementById('hpill').textContent='✅ QR DETECTED!';
+  document.getElementById('hpill').classList.add('ok');
+  document.getElementById('topStatus').textContent='SUCCESS!';
+  sendMsg({type:'QR_RESULT',value:val});
+  setTimeout(closeMe,800);
+}
+
+function closeMe(){stopCam();sendMsg({type:'SCANNER_CLOSED'});}
+function stopCam(){if(raf){cancelAnimationFrame(raf);raf=null;}if(stream){stream.getTracks().forEach(function(t){t.stop();});stream=null;}vid.srcObject=null;}
+function showErr(){document.getElementById('loadScreen').classList.add('gone');document.getElementById('errScreen').style.display='flex';}
+window.addEventListener('beforeunload',stopCam);
+start();
+</script>
+</body>
+</html>
